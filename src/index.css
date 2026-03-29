@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-ui: 'Sora', 'Segoe UI', sans-serif;
+
+  --color-brand-500: #a7c600;
+  --color-brand-400: #badb14;
+  --color-brand-300: #d3ee4f;
+  --color-brand-950: #192100;
+
+  --color-bg-950: #060707;
+  --color-bg-900: #0b0f0e;
+  --color-bg-850: #111615;
+  --color-bg-800: #161c1a;
+
+  --color-text-50: #f4f8f7;
+  --color-text-200: #d6dfdc;
+  --color-text-300: #b8c2bf;
+  --color-text-500: #8e9996;
+}
+
+:root {
+  --app-bg-start: #060808;
+  --app-bg-mid: #0b100f;
+  --app-bg-end: #101614;
+  --app-ambient-a: rgba(167, 198, 0, 0.2);
+  --app-ambient-b: rgba(167, 198, 0, 0.1);
+  --surface-strong: rgba(9, 13, 12, 0.86);
+  --surface-soft: rgba(16, 22, 20, 0.74);
+  --surface-border: rgba(255, 255, 255, 0.1);
+  --surface-shadow: 0 22px 48px rgba(0, 0, 0, 0.45);
+}
+
+body {
+  margin: 0;
+  min-width: 20rem;
+  min-height: 100vh;
+  font-family: var(--font-ui);
+  color: var(--color-text-50);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(160deg, var(--app-bg-start) 0%, var(--app-bg-mid) 54%, var(--app-bg-end) 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-canvas {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: transparent;
+}
+
+.app-canvas::before,
+.app-canvas::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(44px);
+}
+
+.app-canvas::before {
+  left: -10rem;
+  top: -12rem;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--app-ambient-a) 0%, rgba(167, 198, 0, 0) 72%);
+}
+
+.app-canvas::after {
+  right: -10rem;
+  top: 8rem;
+  width: 30rem;
+  height: 30rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--app-ambient-b) 0%, rgba(167, 198, 0, 0) 74%);
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text-50);
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0 1000px #111615 inset;
+}
+
+.glass-panel {
+  position: relative;
+  border: 1px solid var(--surface-border);
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface-soft));
+  box-shadow: var(--surface-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+}
+
+.resource-html {
+  color: var(--color-text-200);
+  line-height: 1.6;
+}
+
+.resource-html a {
+  color: var(--color-brand-300);
+  text-decoration: underline;
+}
+
+.resource-html h1,
+.resource-html h2,
+.resource-html h3,
+.resource-html h4,
+.resource-html h5,
+.resource-html h6 {
+  color: var(--color-text-50);
+  margin-top: 0;
+}
+
+.resource-html img {
+  max-width: 100%;
+  height: auto;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.06) 8%, rgba(255, 255, 255, 0.14) 18%, rgba(255, 255, 255, 0.06) 33%);
+  background-size: 220% 100%;
+  animation: shimmer-slide 1.2s linear infinite;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes shimmer-slide {
+  to {
+    background-position-x: -220%;
+  }
+}
