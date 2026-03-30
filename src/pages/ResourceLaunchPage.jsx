@@ -69,6 +69,65 @@ function buildLaunchFrameDocument(rawHtml) {
   })();
 </script>`
 
+  const bridgeScript = `
+<script>
+  (function () {
+    if (!window.webstack) {
+      window.webstack = {};
+    }
+
+    var isDesktopApp = false;
+    var pendingEnvRequestId = null;
+    var pendingOpenSiteRequests = {};
+
+    function nextRequestId(prefix) {
+      return String(prefix || 'wst') + '_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+    }
+
+    window.webstack.isDesktopApp = function () {
+      return isDesktopApp;
+    };
+
+    window.webstack.openSite = function (siteId) {
+      return new Promise(function (resolve, reject) {
+        var requestId = nextRequestId('open_site');
+        pendingOpenSiteRequests[requestId] = { resolve: resolve, reject: reject };
+        parent.postMessage({ type: 'wst-open-site', requestId: requestId, siteId: siteId }, '*');
+      });
+    };
+
+    window.addEventListener('message', function (event) {
+      var data = event && event.data ? event.data : {};
+      var type = String(data.type || '');
+
+      if (type === 'wst-env-response') {
+        if (pendingEnvRequestId && String(data.requestId || '') === pendingEnvRequestId) {
+          isDesktopApp = Boolean(data.isDesktopApp);
+          pendingEnvRequestId = null;
+        }
+        return;
+      }
+
+      if (type === 'wst-open-site-result') {
+        var requestId = String(data.requestId || '');
+        var pending = pendingOpenSiteRequests[requestId];
+        if (!pending) return;
+        delete pendingOpenSiteRequests[requestId];
+
+        if (data.ok) {
+          pending.resolve({ ok: true });
+          return;
+        }
+
+        pending.reject(new Error(String(data.error || 'Failed to open site.')));
+      }
+    });
+
+    pendingEnvRequestId = nextRequestId('env');
+    parent.postMessage({ type: 'wst-env-request', requestId: pendingEnvRequestId }, '*');
+  })();
+</script>`
+
   if (/<html[\s>]/i.test(html)) {
     let nextHtml = html
     if (/<\/head>/i.test(nextHtml)) {
@@ -78,12 +137,12 @@ function buildLaunchFrameDocument(rawHtml) {
     }
 
     if (/<\/body>/i.test(nextHtml)) {
-      return nextHtml.replace(/<\/body>/i, `${resizeScript}</body>`)
+      return nextHtml.replace(/<\/body>/i, `${bridgeScript}${resizeScript}</body>`)
     }
-    return `${nextHtml}${resizeScript}`
+    return `${nextHtml}${bridgeScript}${resizeScript}`
   }
 
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${helperStyle}</head><body>${html}${resizeScript}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${helperStyle}</head><body>${html}${bridgeScript}${resizeScript}</body></html>`
 }
 
 function ResourceLaunchPage() {
@@ -221,6 +280,86 @@ function ResourceLaunchPage() {
       }
 
       if (event?.data?.type !== 'wst-launch-height') {
+        const type = String(event?.data?.type || '')
+
+        if (type === 'wst-env-request') {
+          const requestId = String(event?.data?.requestId || '')
+          iframe.contentWindow?.postMessage(
+            {
+              type: 'wst-env-response',
+              requestId,
+              isDesktopApp: Boolean(window.webstack && typeof window.webstack.openSite === 'function'),
+            },
+            '*',
+          )
+          return
+        }
+
+        if (type !== 'wst-open-site') {
+          return
+        }
+
+        const requestId = String(event?.data?.requestId || '')
+        const siteId = event?.data?.siteId
+        const hasDesktopBridge = Boolean(window.webstack && typeof window.webstack.openSite === 'function')
+        const hasSiteId = siteId !== null && siteId !== undefined && String(siteId).trim() !== ''
+
+        if (!requestId) {
+          return
+        }
+
+        if (!hasDesktopBridge) {
+          iframe.contentWindow?.postMessage(
+            {
+              type: 'wst-open-site-result',
+              requestId,
+              ok: false,
+              error: 'Desktop bridge is unavailable.',
+            },
+            '*',
+          )
+          return
+        }
+
+        if (!hasSiteId) {
+          iframe.contentWindow?.postMessage(
+            {
+              type: 'wst-open-site-result',
+              requestId,
+              ok: false,
+              error: 'Invalid site id.',
+            },
+            '*',
+          )
+          return
+        }
+
+        Promise.resolve(window.webstack.openSite(siteId))
+          .then((result) => {
+            const ok = typeof result === 'object' && result !== null
+              ? Boolean(result.ok ?? result.success ?? false)
+              : result !== false
+            iframe.contentWindow?.postMessage(
+              {
+                type: 'wst-open-site-result',
+                requestId,
+                ok,
+                error: ok ? '' : String(result?.error || 'Failed to open site.'),
+              },
+              '*',
+            )
+          })
+          .catch((openSiteError) => {
+            iframe.contentWindow?.postMessage(
+              {
+                type: 'wst-open-site-result',
+                requestId,
+                ok: false,
+                error: String(openSiteError?.message || 'Failed to open site.'),
+              },
+              '*',
+            )
+          })
         return
       }
 
